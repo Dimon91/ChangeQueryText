@@ -18,9 +18,6 @@ namespace ChangeQueryText
             changer = new Changer();
             InitializeComponent();
             Bind();
-
-//            changer.PropertyChanged += UpdateField;
-
         }
         public Changer changer;
    
@@ -28,6 +25,7 @@ namespace ChangeQueryText
         {
             textBoxQuery.DataBindings.Add("Text", changer, "QueryText");
             textBoxTemplate.DataBindings.Add("Text", changer, "TemplateText");
+            checkBoxOnlyComment.DataBindings.Add("Checked", changer, "OnlyComment");
         }
 
         private void buttonTemplateToQuery_Click(object sender, EventArgs e)
@@ -40,19 +38,22 @@ namespace ChangeQueryText
             changer.ChangeText(Direction.QueryToTemplate);
         }
 
-        private void UpdateField(object sender, PropertyChangedEventArgs e)
+        private void checkBoxOnlyComment_CheckedChanged(object sender, EventArgs e)
         {
-            if(e.PropertyName == "QueryText")
+            string titleTextToQuery;
+            if (checkBoxOnlyComment.Checked)
             {
-                textBoxQuery.Text = changer.QueryText;
+                titleTextToQuery = "Удалить комментарии из текста макета -->";
             }
-            if (e.PropertyName == "TemplateText")
+            else
             {
-                textBoxTemplate.Text = changer.TemplateText;
+                titleTextToQuery = "Текст макета в запрос -->";
             }
-        }
 
-      }
+            buttonTemplateToQuery.Text = titleTextToQuery;
+            buttonQueryToTemplate.Visible = !checkBoxOnlyComment.Checked;
+        }
+    }
 
     public enum Direction
     {
@@ -65,9 +66,19 @@ namespace ChangeQueryText
         public event PropertyChangedEventHandler PropertyChanged;
         private void NotifyPropertyChanged([CallerMemberName] string propertyName = "")
         {
-            if (PropertyChanged != null)
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public bool OnlyComment
+        {
+            get { return onlyComment; }
+            set
             {
-                PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+                if (onlyComment != value)
+                {
+                    onlyComment = value;
+                    NotifyPropertyChanged();
+                }
             }
         }
 
@@ -94,16 +105,15 @@ namespace ChangeQueryText
             }
         }
 
-        //public event EventHandler<EventArgs> QueryTextChanged;
-        //public event EventHandler<EventArgs> TemplateTextChanged;
 
+        private bool onlyComment = false;
         private string queryText;
         private string templateText;
 
         private string columnNameTemplate = "Template";
         private string columnNameQuery    = "Query";
 
-        private DataTable relations = null;
+        private DataTable relations;
 
         public Changer()
         {
@@ -117,8 +127,6 @@ namespace ChangeQueryText
             relations.Rows.Add("&lt;", "<");
             relations.Rows.Add("&amp;", "&");
             relations.Rows.Add("\"\"", "\"");
-
- //           QueryTextChanged = new EventHandler<EventArgs>(EventArgs.Empty);
         }
 
         public void ChangeText(Direction direction)
@@ -133,43 +141,76 @@ namespace ChangeQueryText
                     columnNameIn  = columnNameTemplate;
                     columnNameOut = columnNameQuery;
 
-                    textIn  = templateText;
- //                   textOut = queryText;
+                    textIn = RemoveComment(templateText);
+
+                    if (onlyComment)                    
+                        textOut = textIn;
+                    else                    
+                        textOut = ChangeQuqryText(textIn, columnNameIn, columnNameOut);
+
+                    QueryText = textOut;
                     break;
 
                 case Direction.QueryToTemplate:
                     columnNameIn  = columnNameQuery;
                     columnNameOut = columnNameTemplate;
                     textIn  = queryText;
- //                   textOut = templateText;
-                    break;
 
-                default:
-                    return;
-            }
-
-            textOut = textIn;
-            foreach(DataRow row in relations.Rows)
-            {
-                var before = row.Field<string>(columnNameIn);
-                var after  = row.Field<string>(columnNameOut);
-                textOut = textOut.Replace(before, after);
-            }
-
-            switch (direction)
-            {
-                case Direction.TemplateToQuery:
-                    QueryText = textOut;
-                    break;
-
-                case Direction.QueryToTemplate:
+                    textOut = ChangeQuqryText(textIn, columnNameIn, columnNameOut);
                     TemplateText = textOut;
                     break;
 
                 default:
                     return;
             }
+
+      }
+
+        private string RemoveComment(string text)
+        {
+            var beginComment = "<!--";
+            var endComment   = "-->\r\n";
+
+            var beginIndex = text.IndexOf(beginComment);
+            if (beginIndex == -1)
+                return text;
+
+            var endIndex = -1;
+
+            var comments = new List<string>();
+
+            while(beginIndex != -1)
+            {
+                endIndex = text.IndexOf(endComment, beginIndex);
+                if (endIndex == -1)
+                    endIndex = text.Length;
+                else
+                    endIndex += endComment.Length;
+                var commentLength = endIndex - beginIndex;
+                comments.Add(text.Substring(beginIndex, commentLength));
+
+                beginIndex = text.IndexOf(beginComment, endIndex);
+            }
+
+            comments = comments.Distinct().ToList();
+
+            foreach(var comment in comments)
+            {
+                text = text.Replace(comment, "");
+            }
+
+            return text;
         }
 
+        private string ChangeQuqryText(string text, string columnNameIn, string columnNameOut)
+        {
+            foreach (DataRow row in relations.Rows)
+            {
+                var before = row.Field<string>(columnNameIn);
+                var after = row.Field<string>(columnNameOut);
+                text = text.Replace(before, after);
+            }
+            return text;
+        }
     }
 }
