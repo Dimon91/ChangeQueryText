@@ -67,6 +67,7 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxTemplate.Location = new System.Drawing.Point(3, 4);
+            this.textBoxTemplate.MaxLength = 4194303;
             this.textBoxTemplate.Multiline = true;
             this.textBoxTemplate.Name = "textBoxTemplate";
             this.textBoxTemplate.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
@@ -103,6 +104,7 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.textBoxQuery.Location = new System.Drawing.Point(3, 4);
+            this.textBoxQuery.MaxLength = 4194303;
             this.textBoxQuery.Multiline = true;
             this.textBoxQuery.Name = "textBoxQuery";
             this.textBoxQuery.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
